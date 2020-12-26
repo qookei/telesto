@@ -1,0 +1,9 @@
+[submodule "subprojects/frigg"]
+	path = subprojects/frigg
+	url = https://github.com/managarm/frigg
+[submodule "subprojects/libasync"]
+	path = subprojects/libasync
+	url = https://github.com/managarm/libasync
+[submodule "subprojects/cxxshim"]
+	path = subprojects/cxxshim
+	url = https://github.com/managarm/cxxshim
