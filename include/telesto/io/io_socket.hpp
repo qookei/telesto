@@ -1,17 +1,49 @@
 #pragma once
 
+#include <telesto/async/io_service.hpp>
+#include <telesto/io/poll.hpp>
+#include <async/result.hpp>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <telesto/platform/linux/file.hpp>
-#include <async/result.hpp>
+#include <cassert>
+#include <fcntl.h>
 #include <queue>
-#include <span>
 
 namespace tlst {
 
-struct io_socket : fd_file {
-	io_socket(io_service *service, int fd)
-	: fd_file{service, fd} { }
+struct io_socket final : pollable {
+	io_socket(io_service *owner, int fd)
+	: owner_{owner}, fd_{fd} {
+		int flags = fcntl(fd_, F_GETFL, 0);
+		assert(flags > -1);
+		flags |= O_NONBLOCK;
+		fcntl(fd_, F_SETFL, flags);
+	}
+
+	~io_socket() {
+		if (owner_)
+			owner_->remove(*this);
+
+		close(fd_);
+	}
+
+	io_socket(const io_socket &) = delete;
+	io_socket(io_socket &&) = default;
+
+	io_socket &operator=(const io_socket &) = delete;
+	io_socket &operator=(io_socket &&) = default;
+
+	io_service *get_io_service() const {
+		return owner_;
+	}
+
+	int fd() override {
+		return fd_;
+	}
+
+	operator bool() const {
+		return fd_ >= 0;
+	}
 
 private:
 	struct send_base {
@@ -188,7 +220,7 @@ private:
 		ssize_t chunk = sendmsg(fd(), &hdr, MSG_DONTWAIT);
 
 		if (chunk < 0) {
-			assert(errno == EAGAIN);
+			assert(errno == EAGAIN || errno == EWOULDBLOCK);
 			return false;
 		}
 
@@ -211,7 +243,7 @@ private:
 		ssize_t chunk = recvmsg(fd(), &hdr, MSG_DONTWAIT);
 
 		if (chunk < 0) {
-			assert(errno == EAGAIN);
+			assert(errno == EAGAIN || errno == EWOULDBLOCK);
 			return false;
 		}
 
@@ -221,6 +253,9 @@ private:
 	}
 
 private:
+	io_service *owner_;
+	int fd_;
+
 	std::queue<send_base *> send_q_;
 	std::queue<recv_base *> recv_q_;
 };
