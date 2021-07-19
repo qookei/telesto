@@ -2,7 +2,8 @@ test_cpp_args = []
 test_deps = [
 	telesto_dep,
 	subproject('frigg').get_variable('frigg_dep'),
-	declare_dependency(include_directories: include_directories('../subprojects/libasync/include'))
+	declare_dependency(include_directories: include_directories('../subprojects/libasync/include')),
+	dependency('libuv')
 ]
 
 if meson.get_compiler('cpp').has_argument('-fcoroutines')
@@ -14,9 +15,9 @@ else
 	error('unsupported compiler')
 endif
 
-unix_socket = executable('unix-socket',
-	'unix-socket.cpp',
+tcp = executable('tcp',
+	'tcp.cpp',
 	cpp_args: test_cpp_args,
 	dependencies: test_deps)
 
-test('unix socket test', unix_socket)
+test('tcp test', tcp)
